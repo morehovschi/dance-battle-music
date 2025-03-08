@@ -7,6 +7,11 @@ import pprint
 import os
 import argparse
 
+def scroll_down(page):
+    """Scroll down the page to load more videos."""
+    page.evaluate("window.scrollTo(0, document.documentElement.scrollHeight)")
+    time.sleep(3)  # Wait for new videos to load
+
 def collect_music_links(playwright, n_results, n_attempts):
     browser = playwright.chromium.launch(headless=False)  # Change to True to run in background
     context = browser.new_context()
@@ -36,78 +41,91 @@ def collect_music_links(playwright, n_results, n_attempts):
 
     time.sleep(5)
 
-    video_links = page.locator("a#video-title").all()
-    if not video_links:
-        print("No videos found! Exiting.")
-        return {}
-
-    print(f"Found {len(video_links)} videos.")
-
     videos_processed = 0
-    for video in video_links[:n_attempts]:  # Only process up to n_attempts videos
-        videos_processed += 1
-        video_url = video.get_attribute("href")
-        if not video_url:
-            continue
-        full_video_url = f"https://www.youtube.com{video_url}"
+    while videos_processed < n_attempts:
+        # Scroll down to load more videos if needed
+        if videos_processed > 0 and videos_processed % 20 == 0:  # Scroll every 20 videos
+            print("Scrolling down to load more videos...")
+            scroll_down(page)
+            time.sleep(5)  # Wait for new videos to load
 
-        print(f"\nChecking video {videos_processed}/{n_attempts}: {full_video_url}")
-        video.click()
-        time.sleep(5)
+        # Get all video links on the page
+        video_links = page.locator("a#video-title").all()
+        if not video_links:
+            print("No videos found! Exiting.")
+            return {}
 
-        try:
-            more_button = page.get_by_role("button", name="...more")
-            if more_button:
-                print("Clicking 'More' in the description...")
-                more_button.click()
-                time.sleep(3)
+        print(f"Found {len(video_links)} videos. Processed {videos_processed}/{n_attempts}")
 
-            music_section = page.locator("#structured-description ytd-horizontal-card-list-renderer")
-            if not music_section.count():
-                print("No music section found, skipping.")
-                page.go_back()
-                time.sleep(3)
+        # Process only new videos
+        for video in video_links[videos_processed:]:  # Only process new videos
+            if videos_processed >= n_attempts:
+                break
+
+            videos_processed += 1
+            video_url = video.get_attribute("href")
+            if not video_url:
                 continue
+            full_video_url = f"https://www.youtube.com{video_url}"
 
-            print("Music section found! Extracting data...")
+            print(f"\nChecking video {videos_processed}/{n_attempts}: {full_video_url}")
+            video.click()
+            time.sleep(5)
 
-            music_items = music_section.locator("a").all()
-            video_music_links = []
+            try:
+                more_button = page.get_by_role("button", name="...more")
+                if more_button:
+                    print("Clicking 'More' in the description...")
+                    more_button.click()
+                    time.sleep(3)
 
-            print(f"Found {len(music_items)} items in the Music section.")
+                music_section = page.locator("#structured-description ytd-horizontal-card-list-renderer")
+                if not music_section.count():
+                    print("No music section found, skipping.")
+                    page.go_back()
+                    time.sleep(3)
+                    continue
 
-            for idx, item in enumerate(music_items):
-                try:
-                    music_url = item.get_attribute("href")
-                    music_text = item.inner_text()
-                    print(f"[{idx+1}] {music_text}\n{music_url}\n")
+                print("Music section found! Extracting data...")
 
-                    if not music_url:
-                        continue
+                music_items = music_section.locator("a").all()
+                video_music_links = []
 
-                    if music_text == "Music" and "channel" in music_url:
-                        continue
+                print(f"Found {len(music_items)} items in the Music section.")
 
-                    video_music_links.append(f"https://www.youtube.com{music_url}")
+                for idx, item in enumerate(music_items):
+                    try:
+                        music_url = item.get_attribute("href")
+                        music_text = item.inner_text()
+                        print(f"[{idx+1}] {music_text}\n{music_url}\n")
 
-                except Exception as e:
-                    print(f"  Error extracting item {idx+1}: {e}")
+                        if not music_url:
+                            continue
 
-            if video_music_links:
-                music_data[full_video_url] = video_music_links
-                print(f"Added {len(video_music_links)} music links for {full_video_url}")
+                        if music_text == "Music" and "channel" in music_url:
+                            continue
 
-            if len(music_data) >= n_results:
-                print(f"Target number of results ({n_results}) reached!")
-                context.close()
-                browser.close()
-                return music_data
+                        video_music_links.append(f"https://www.youtube.com{music_url}")
 
-        except Exception as e:
-            print(f"Error processing video: {e}")
+                    except Exception as e:
+                        print(f"  Error extracting item {idx+1}: {e}")
 
-        page.goto(f"https://www.youtube.com/results?search_query={search_query}")
-        time.sleep(5)
+                if video_music_links:
+                    music_data[full_video_url] = video_music_links
+                    print(f"Added {len(video_music_links)} music links for {full_video_url}")
+
+                if len(music_data) >= n_results:
+                    print(f"Target number of results ({n_results}) reached!")
+                    context.close()
+                    browser.close()
+                    return music_data
+
+            except Exception as e:
+                print(f"Error processing video: {e}")
+
+            # Go back to the search results page
+            page.goto(f"https://www.youtube.com/results?search_query={search_query}")
+            time.sleep(5)
 
     print(f"Processed {videos_processed} videos. Returning collected data.")
     context.close()
