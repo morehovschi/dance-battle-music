@@ -8,7 +8,7 @@ import pprint
 import os
 import argparse
 
-def collect_music_links(playwright, target_num_results, max_num_attempts):
+def collect_music_links(playwright, n_results, n_attempts):
     browser = playwright.chromium.launch(headless=False)  # Change to True to run in background
     context = browser.new_context()
     page = context.new_page()
@@ -38,15 +38,15 @@ def collect_music_links(playwright, target_num_results, max_num_attempts):
     time.sleep(5)
 
     attempt = 0
-    while attempt < max_num_attempts:
+    while attempt < n_attempts:
         video_links = page.locator("a#video-title").all()
         if not video_links:
             print("No videos found! Exiting.")
             return {}
 
-        print(f"Found {len(video_links)} videos. Attempt {attempt + 1}/{max_num_attempts}")
+        print(f"Found {len(video_links)} videos. Attempt {attempt + 1}/{n_attempts}")
 
-        for video in video_links[:target_num_results]:
+        for video in video_links[:n_results]:
             video_url = video.get_attribute("href")
             if not video_url:
                 continue
@@ -98,7 +98,7 @@ def collect_music_links(playwright, target_num_results, max_num_attempts):
                     music_data[full_video_url] = video_music_links
                     print(f"Added {len(video_music_links)} music links for {full_video_url}")
 
-                if len(music_data) >= target_num_results:
+                if len(music_data) >= n_results:
                     print("Target number of results reached!")
                     context.close()
                     browser.close()
@@ -111,7 +111,7 @@ def collect_music_links(playwright, target_num_results, max_num_attempts):
             time.sleep(5)
 
         attempt += 1
-        print(f"Retrying... {attempt}/{max_num_attempts}")
+        print(f"Retrying... {attempt}/{n_attempts}")
 
     print("Max attempts reached. Returning collected data.")
     context.close()
@@ -121,14 +121,14 @@ def collect_music_links(playwright, target_num_results, max_num_attempts):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Collect music links from YouTube search results.")
-    parser.add_argument("--target_num_results", type=int, default=10, help="Number of desired video results (default: 10)")
-    parser.add_argument("--max_num_attempts", type=int, default=20, help="Maximum number of attempts to reach target results (default: 20)")
+    parser.add_argument("--n_results", type=int, default=10, help="Number of desired video results (default: 10)")
+    parser.add_argument("--n_attempts", type=int, default=20, help="Maximum number of attempts to reach target results (default: 20)")
 
     args = parser.parse_args()
 
     result = {}
     with sync_playwright() as playwright:
-        result = collect_music_links(playwright, args.target_num_results, args.max_num_attempts)
+        result = collect_music_links(playwright, args.n_results, args.n_attempts)
         print("\nCollected Music Data:")
         pprint.pp(result)
 
