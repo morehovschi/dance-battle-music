@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 from playwright.sync_api import sync_playwright
 import time
-import sys
 import re
 import json
 import pprint
@@ -37,83 +36,80 @@ def collect_music_links(playwright, n_results, n_attempts):
 
     time.sleep(5)
 
-    attempt = 0
-    while attempt < n_attempts:
-        video_links = page.locator("a#video-title").all()
-        if not video_links:
-            print("No videos found! Exiting.")
-            return {}
+    video_links = page.locator("a#video-title").all()
+    if not video_links:
+        print("No videos found! Exiting.")
+        return {}
 
-        print(f"Found {len(video_links)} videos. Attempt {attempt + 1}/{n_attempts}")
+    print(f"Found {len(video_links)} videos.")
 
-        for video in video_links[:n_results]:
-            video_url = video.get_attribute("href")
-            if not video_url:
+    videos_processed = 0
+    for video in video_links[:n_attempts]:  # Only process up to n_attempts videos
+        videos_processed += 1
+        video_url = video.get_attribute("href")
+        if not video_url:
+            continue
+        full_video_url = f"https://www.youtube.com{video_url}"
+
+        print(f"\nChecking video {videos_processed}/{n_attempts}: {full_video_url}")
+        video.click()
+        time.sleep(5)
+
+        try:
+            more_button = page.get_by_role("button", name="...more")
+            if more_button:
+                print("Clicking 'More' in the description...")
+                more_button.click()
+                time.sleep(3)
+
+            music_section = page.locator("#structured-description ytd-horizontal-card-list-renderer")
+            if not music_section.count():
+                print("No music section found, skipping.")
+                page.go_back()
+                time.sleep(3)
                 continue
-            full_video_url = f"https://www.youtube.com{video_url}"
 
-            print(f"\nChecking video: {full_video_url}")
-            video.click()
-            time.sleep(5)
+            print("Music section found! Extracting data...")
 
-            try:
-                more_button = page.get_by_role("button", name="...more")
-                if more_button:
-                    print("Clicking 'More' in the description...")
-                    more_button.click()
-                    time.sleep(3)
+            music_items = music_section.locator("a").all()
+            video_music_links = []
 
-                music_section = page.locator("#structured-description ytd-horizontal-card-list-renderer")
-                if not music_section.count():
-                    print("No music section found, skipping.")
-                    page.go_back()
-                    time.sleep(3)
-                    continue
+            print(f"Found {len(music_items)} items in the Music section.")
 
-                print("Music section found! Extracting data...")
+            for idx, item in enumerate(music_items):
+                try:
+                    music_url = item.get_attribute("href")
+                    music_text = item.inner_text()
+                    print(f"[{idx+1}] {music_text}\n{music_url}\n")
 
-                music_items = music_section.locator("a").all()
-                video_music_links = []
+                    if not music_url:
+                        continue
 
-                print(f"Found {len(music_items)} items in the Music section.")
+                    if music_text == "Music" and "channel" in music_url:
+                        continue
 
-                for idx, item in enumerate(music_items):
-                    try:
-                        music_url = item.get_attribute("href")
-                        music_text = item.inner_text()
-                        print(f"[{idx+1}] {music_text}\n{music_url}\n")
+                    video_music_links.append(f"https://www.youtube.com{music_url}")
 
-                        if not music_url:
-                            continue
+                except Exception as e:
+                    print(f"  Error extracting item {idx+1}: {e}")
 
-                        if music_text == "Music" and "channel" in music_url:
-                            continue
+            if video_music_links:
+                music_data[full_video_url] = video_music_links
+                print(f"Added {len(video_music_links)} music links for {full_video_url}")
 
-                        video_music_links.append(f"https://www.youtube.com{music_url}")
+            if len(music_data) >= n_results:
+                print(f"Target number of results ({n_results}) reached!")
+                context.close()
+                browser.close()
+                return music_data
 
-                    except Exception as e:
-                        print(f"  Error extracting item {idx+1}: {e}")
+        except Exception as e:
+            print(f"Error processing video: {e}")
 
-                if video_music_links:
-                    music_data[full_video_url] = video_music_links
-                    print(f"Added {len(video_music_links)} music links for {full_video_url}")
+        page.goto(f"https://www.youtube.com/results?search_query={search_query}")
+        time.sleep(5)
 
-                if len(music_data) >= n_results:
-                    print("Target number of results reached!")
-                    context.close()
-                    browser.close()
-                    return music_data
-
-            except Exception as e:
-                print(f"Error processing video: {e}")
-
-            page.goto(f"https://www.youtube.com/results?search_query={search_query}")
-            time.sleep(5)
-
-        attempt += 1
-        print(f"Retrying... {attempt}/{n_attempts}")
-
-    print("Max attempts reached. Returning collected data.")
+    print(f"Processed {videos_processed} videos. Returning collected data.")
     context.close()
     browser.close()
 
@@ -122,7 +118,7 @@ def collect_music_links(playwright, n_results, n_attempts):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Collect music links from YouTube search results.")
     parser.add_argument("--n_results", type=int, default=10, help="Number of desired video results (default: 10)")
-    parser.add_argument("--n_attempts", type=int, default=20, help="Maximum number of attempts to reach target results (default: 20)")
+    parser.add_argument("--n_attempts", type=int, default=20, help="Maximum number of videos to look at (default: 20)")
 
     args = parser.parse_args()
 
@@ -143,4 +139,3 @@ if __name__ == "__main__":
             json.dump(result, f)
     else:
         print("Result is empty. Not writing.")
-
