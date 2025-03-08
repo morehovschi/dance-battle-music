@@ -6,14 +6,15 @@ import re
 import json
 import pprint
 import os
+import argparse
 
-def collect_music_links(playwright):
+def collect_music_links(playwright, target_num_results, max_num_attempts):
     browser = playwright.chromium.launch(headless=False)  # Change to True to run in background
     context = browser.new_context()
     page = context.new_page()
-    
+
     music_data = {}
-    
+
     print("Opening YouTube...")
     page.goto("https://www.youtube.com/")
     time.sleep(3)
@@ -26,109 +27,120 @@ def collect_music_links(playwright):
             time.sleep(3)
     except Exception as e:
         print(f"Cookie rejection button not found: {e}")
-    
+
     search_query = "hip hop dance battle"
     print(f"Searching for: {search_query}")
-    
+
     search_box = page.get_by_role("combobox", name="Search")
     search_box.fill(search_query)
     search_box.press("Enter")
-    
+
     time.sleep(5)
-    
-    video_links = page.locator("a#video-title").all()
-    if not video_links:
-        print("No videos found! Exiting.")
-        return {}
-    
-    print(f"Found {len(video_links)} videos. Starting iteration...")
 
-    for video in video_links[:3]:  # Limit to 3 videos for testing
-        video_url = video.get_attribute("href")
-        if not video_url:
-            continue
-        full_video_url = f"https://www.youtube.com{video_url}"
-        
-        print(f"\nChecking video: {full_video_url}")
-        video.click()
-        
-        time.sleep(5)
+    attempt = 0
+    while attempt < max_num_attempts:
+        video_links = page.locator("a#video-title").all()
+        if not video_links:
+            print("No videos found! Exiting.")
+            return {}
 
-        try:
-            more_button = page.get_by_role("button", name="...more")
-            if more_button:
-                print("Clicking 'More' in the description...")
-                more_button.click()
-                time.sleep(3)
+        print(f"Found {len(video_links)} videos. Attempt {attempt + 1}/{max_num_attempts}")
 
-            # Locate the "Music" section using its actual container
-            music_section = page.locator("#structured-description ytd-horizontal-card-list-renderer")
-            if not music_section.count():
-                print("No music section found, skipping.")
-                page.go_back()
-                time.sleep(3)
+        for video in video_links[:target_num_results]:
+            video_url = video.get_attribute("href")
+            if not video_url:
                 continue
-            
-            print("Music section found! Extracting data...")
+            full_video_url = f"https://www.youtube.com{video_url}"
 
-            # Extract all links inside the Music section
-            music_items = music_section.locator("a").all()
-            # per video music links
-            video_music_links = []
+            print(f"\nChecking video: {full_video_url}")
+            video.click()
+            time.sleep(5)
 
-            print(f"Found {len(music_items)} items in the Music section.")
-            
-            # Debug: Print all raw attributes of elements
-            for idx, item in enumerate(music_items):
-                try:
-                    music_url = item.get_attribute("href")
-                    music_text = item.inner_text()
-                    print(f"[{idx+1}] {music_text}\n{music_url}\n")
+            try:
+                more_button = page.get_by_role("button", name="...more")
+                if more_button:
+                    print("Clicking 'More' in the description...")
+                    more_button.click()
+                    time.sleep(3)
 
-                    if not music_url:
-                        continue
+                music_section = page.locator("#structured-description ytd-horizontal-card-list-renderer")
+                if not music_section.count():
+                    print("No music section found, skipping.")
+                    page.go_back()
+                    time.sleep(3)
+                    continue
 
-                    # usually there is an extra item here with the text "Music" and
-                    # a link that is irrelevant for our purposes; skip it
-                    if music_text == "Music" and "channel" in music_url:
-                        continue
-                    
-                    video_music_links.append( f"https://www.youtube.com{music_url}" )
+                print("Music section found! Extracting data...")
 
-                except Exception as e:
-                    print(f"  Error extracting item {idx+1}: {e}")
+                music_items = music_section.locator("a").all()
+                video_music_links = []
 
-            if video_music_links:
-                music_data[full_video_url] = video_music_links
-                print(f"Added {len(video_music_links)} music links for {full_video_url}")
+                print(f"Found {len(music_items)} items in the Music section.")
 
-        except Exception as e:
-            print(f"Error processing video: {e}")
-        
-        page.goto(f"https://www.youtube.com/results?search_query={search_query}")
-        time.sleep(5)
+                for idx, item in enumerate(music_items):
+                    try:
+                        music_url = item.get_attribute("href")
+                        music_text = item.inner_text()
+                        print(f"[{idx+1}] {music_text}\n{music_url}\n")
 
+                        if not music_url:
+                            continue
+
+                        if music_text == "Music" and "channel" in music_url:
+                            continue
+
+                        video_music_links.append(f"https://www.youtube.com{music_url}")
+
+                    except Exception as e:
+                        print(f"  Error extracting item {idx+1}: {e}")
+
+                if video_music_links:
+                    music_data[full_video_url] = video_music_links
+                    print(f"Added {len(video_music_links)} music links for {full_video_url}")
+
+                if len(music_data) >= target_num_results:
+                    print("Target number of results reached!")
+                    context.close()
+                    browser.close()
+                    return music_data
+
+            except Exception as e:
+                print(f"Error processing video: {e}")
+
+            page.goto(f"https://www.youtube.com/results?search_query={search_query}")
+            time.sleep(5)
+
+        attempt += 1
+        print(f"Retrying... {attempt}/{max_num_attempts}")
+
+    print("Max attempts reached. Returning collected data.")
     context.close()
     browser.close()
-    
+
     return music_data
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Collect music links from YouTube search results.")
+    parser.add_argument("--target_num_results", type=int, default=10, help="Number of desired video results (default: 10)")
+    parser.add_argument("--max_num_attempts", type=int, default=20, help="Maximum number of attempts to reach target results (default: 20)")
+
+    args = parser.parse_args()
+
     result = {}
     with sync_playwright() as playwright:
-        result = collect_music_links(playwright)
+        result = collect_music_links(playwright, args.target_num_results, args.max_num_attempts)
         print("\nCollected Music Data:")
-        pprint.pp( result )
+        pprint.pp(result)
 
-    # if data file already exists, increment iteration number so as to not overwrite
     data_item_num = 0
     fname = f"data/music_links_{data_item_num}.json"
-    while os.path.isfile( fname ):
+    while os.path.isfile(fname):
         data_item_num += 1
-        fname = f"data/music_links_{data_item_num}.json"    
+        fname = f"data/music_links_{data_item_num}.json"
 
     if result:
-        with open( fname, "w" ) as f:
-            json.dump( result, f )
+        with open(fname, "w") as f:
+            json.dump(result, f)
     else:
-        print( "Result is empty. Not writing." )
+        print("Result is empty. Not writing.")
+
