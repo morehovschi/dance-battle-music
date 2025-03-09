@@ -7,6 +7,13 @@ import pprint
 import os
 import argparse
 
+def youtube_id( string ):
+    """
+    Helper that reduces a YouTube video link to the unique video identifier
+    """
+    # identifier starts after this specific string sequence and takes 11 characters
+    return string[ string.find( "watch?v=" ) + 8 : string.find( "watch?v=" ) + 19 ]
+
 def scroll_down(page):
     """Scroll down the page to load more videos."""
     page.evaluate("window.scrollTo(0, document.documentElement.scrollHeight)")
@@ -64,18 +71,17 @@ def collect_music_links(playwright, n_results, n_attempts, processed_data=None):
             if videos_processed >= n_attempts:
                 break
 
-            videos_processed += 1
             video_url = video.get_attribute("href")
             if not video_url:
                 continue
-            full_video_url = f"https://www.youtube.com{video_url}"
+            video_id = youtube_id( video_url )
 
             # Skip if the video has already been processed
-            if full_video_url in processed_data:
-                print(f"Skipping already processed video: {full_video_url}")
+            if video_id in processed_data:
+                print(f"Skipping already processed video: {video_id}")
                 continue
 
-            print(f"\nChecking video {videos_processed}/{n_attempts}: {full_video_url}")
+            print(f"\nChecking video {videos_processed}/{n_attempts}: {video_id}")
             video.click()
             time.sleep(5)
 
@@ -112,14 +118,17 @@ def collect_music_links(playwright, n_results, n_attempts, processed_data=None):
                         if music_text == "Music" and "channel" in music_url:
                             continue
 
-                        video_music_links.append(f"https://www.youtube.com{music_url}")
+                        music_id = youtube_id( music_url )
+                        if video_id == music_id:
+                            breakpoint()
+                        video_music_links.append( music_id )
 
                     except Exception as e:
                         print(f"  Error extracting item {idx+1}: {e}")
 
                 if video_music_links:
-                    processed_data[full_video_url] = video_music_links
-                    print(f"Added {len(video_music_links)} music links for {full_video_url}")
+                    processed_data[video_id] = video_music_links
+                    print(f"Added {len(video_music_links)} music links for {video_id}")
 
                 if len(processed_data) >= n_results:
                     print(f"Target number of results ({n_results}) reached!")
@@ -131,6 +140,7 @@ def collect_music_links(playwright, n_results, n_attempts, processed_data=None):
                 print(f"Error processing video: {e}")
 
             # Go back to the search results page
+            videos_processed += 1
             page.goto(f"https://www.youtube.com/results?search_query={search_query}")
             time.sleep(5)
 
