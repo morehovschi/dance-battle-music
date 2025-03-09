@@ -12,12 +12,12 @@ def scroll_down(page):
     page.evaluate("window.scrollTo(0, document.documentElement.scrollHeight)")
     time.sleep(3)  # Wait for new videos to load
 
-def collect_music_links(playwright, n_results, n_attempts):
+def collect_music_links(playwright, n_results, n_attempts, processed_data=None):
     browser = playwright.chromium.launch(headless=False)  # Change to True to run in background
     context = browser.new_context()
     page = context.new_page()
 
-    music_data = {}
+    music_data = processed_data if processed_data else {}
 
     print("Opening YouTube...")
     page.goto("https://www.youtube.com/")
@@ -53,7 +53,7 @@ def collect_music_links(playwright, n_results, n_attempts):
         video_links = page.locator("a#video-title").all()
         if not video_links:
             print("No videos found! Exiting.")
-            return {}
+            return music_data
 
         print(f"Found {len(video_links)} videos. Processed {videos_processed}/{n_attempts}")
 
@@ -67,6 +67,11 @@ def collect_music_links(playwright, n_results, n_attempts):
             if not video_url:
                 continue
             full_video_url = f"https://www.youtube.com{video_url}"
+
+            # Skip if the video has already been processed
+            if full_video_url in music_data:
+                print(f"Skipping already processed video: {full_video_url}")
+                continue
 
             print(f"\nChecking video {videos_processed}/{n_attempts}: {full_video_url}")
             video.click()
@@ -137,12 +142,23 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Collect music links from YouTube search results.")
     parser.add_argument("--n_results", type=int, default=10, help="Number of desired video results (default: 10)")
     parser.add_argument("--n_attempts", type=int, default=20, help="Maximum number of videos to look at (default: 20)")
+    parser.add_argument("--read-processed-data-from", type=str, help="Path to a JSON file containing previously processed data")
 
     args = parser.parse_args()
 
+    # Load processed data if provided
+    processed_data = {}
+    if args.read_processed_data_from:
+        try:
+            with open(args.read_processed_data_from, "r") as f:
+                processed_data = json.load(f)
+            print(f"Loaded {len(processed_data)} previously processed URLs from {args.read_processed_data_from}")
+        except Exception as e:
+            print(f"Error loading processed data: {e}")
+
     result = {}
     with sync_playwright() as playwright:
-        result = collect_music_links(playwright, args.n_results, args.n_attempts)
+        result = collect_music_links(playwright, args.n_results, args.n_attempts, processed_data)
         print("\nCollected Music Data:")
         pprint.pp(result)
 
