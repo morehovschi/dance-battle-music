@@ -17,7 +17,9 @@ def collect_music_links(playwright, n_results, n_attempts, processed_data=None):
     context = browser.new_context()
     page = context.new_page()
 
-    music_data = processed_data if processed_data else {}
+    processed_data = processed_data if processed_data else {}
+    if processed_data is None:
+        processed_data = {}
 
     print("Opening YouTube...")
     page.goto("https://www.youtube.com/")
@@ -53,7 +55,7 @@ def collect_music_links(playwright, n_results, n_attempts, processed_data=None):
         video_links = page.locator("a#video-title").all()
         if not video_links:
             print("No videos found! Exiting.")
-            return music_data
+            return processed_data
 
         print(f"Found {len(video_links)} videos. Processed {videos_processed}/{n_attempts}")
 
@@ -69,7 +71,7 @@ def collect_music_links(playwright, n_results, n_attempts, processed_data=None):
             full_video_url = f"https://www.youtube.com{video_url}"
 
             # Skip if the video has already been processed
-            if full_video_url in music_data:
+            if full_video_url in processed_data:
                 print(f"Skipping already processed video: {full_video_url}")
                 continue
 
@@ -116,14 +118,14 @@ def collect_music_links(playwright, n_results, n_attempts, processed_data=None):
                         print(f"  Error extracting item {idx+1}: {e}")
 
                 if video_music_links:
-                    music_data[full_video_url] = video_music_links
+                    processed_data[full_video_url] = video_music_links
                     print(f"Added {len(video_music_links)} music links for {full_video_url}")
 
-                if len(music_data) >= n_results:
+                if len(processed_data) >= n_results:
                     print(f"Target number of results ({n_results}) reached!")
                     context.close()
                     browser.close()
-                    return music_data
+                    return processed_data
 
             except Exception as e:
                 print(f"Error processing video: {e}")
@@ -136,7 +138,7 @@ def collect_music_links(playwright, n_results, n_attempts, processed_data=None):
     context.close()
     browser.close()
 
-    return music_data
+    return processed_data
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Collect music links from YouTube search results.")
@@ -156,11 +158,10 @@ if __name__ == "__main__":
         except Exception as e:
             print(f"Error loading processed data: {e}")
 
-    result = {}
     with sync_playwright() as playwright:
-        result = collect_music_links(playwright, args.n_results, args.n_attempts, processed_data)
+        processed_data = collect_music_links(playwright, args.n_results, args.n_attempts, processed_data)
         print("\nCollected Music Data:")
-        pprint.pp(result)
+        pprint.pp(processed_data)
 
     data_item_num = 0
     fname = f"data/music_links_{data_item_num}.json"
@@ -168,8 +169,8 @@ if __name__ == "__main__":
         data_item_num += 1
         fname = f"data/music_links_{data_item_num}.json"
 
-    if result:
+    if processed_data:
         with open(fname, "w") as f:
-            json.dump(result, f)
+            json.dump(processed_data, f)
     else:
         print("Result is empty. Not writing.")
