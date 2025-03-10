@@ -7,19 +7,39 @@ import pprint
 import os
 import argparse
 
-def youtube_id( string ):
+def save_data_file( fname, data_dict ):
+    """
+    FIXME
+    """
+    data_item_num = 0
+    numbered_fname = f"{fname}_{data_item_num}"
+    while os.path.isfile(numbered_fname + ".json"):
+        data_item_num += 1
+        numbered_fname = f"{fname}_{data_item_num}"
+        
+    with open(numbered_fname + ".json", "w") as f:
+        json.dump(data_dict, f)
+
+    return f"{fname}_{data_item_num}.json"
+
+def youtube_id( url ):
     """
     Helper that reduces a YouTube video link to the unique video identifier
     """
-    # identifier starts after this specific string sequence and takes 11 characters
-    return string[ string.find( "watch?v=" ) + 8 : string.find( "watch?v=" ) + 19 ]
+    if "watch?v=" not in url:
+        # already reduced to id
+        return url
+
+    # identifier starts after this specific url sequence and takes 11 characters
+    return url[ url.find( "watch?v=" ) + 8 : url.find( "watch?v=" ) + 19 ]
 
 def scroll_down(page):
     """Scroll down the page to load more videos."""
     page.evaluate("window.scrollTo(0, document.documentElement.scrollHeight)")
     time.sleep(3)  # Wait for new videos to load
 
-def collect_music_links(playwright, n_results, n_attempts, processed_data=None):
+def collect_music_links(playwright, n_results, n_attempts, processed_data=None,
+                        intermediate_saving=True):
     browser = playwright.chromium.launch(headless=False)  # Change to True to run in background
     context = browser.new_context()
     page = context.new_page()
@@ -51,12 +71,16 @@ def collect_music_links(playwright, n_results, n_attempts, processed_data=None):
     time.sleep(5)
 
     videos_processed = 0
+    new_video_urls = 0
     while videos_processed < n_attempts:
         # Scroll down to load more videos if needed
-        if videos_processed > 0 and videos_processed % 20 == 0:  # Scroll every 20 videos
+        if videos_processed > 0 and videos_processed % 5 == 0:
             print("Scrolling down to load more videos...")
             scroll_down(page)
             time.sleep(5)  # Wait for new videos to load
+
+            if intermediate_saving:
+                save_data_file( "data/music_links", processed_data )
 
         # Get all video links on the page
         video_links = page.locator("a#video-title").all()
@@ -68,6 +92,8 @@ def collect_music_links(playwright, n_results, n_attempts, processed_data=None):
 
         # Process only new videos
         for video in video_links[videos_processed:]:  # Only process new videos
+            videos_processed += 1
+
             if videos_processed >= n_attempts:
                 break
 
@@ -120,7 +146,10 @@ def collect_music_links(playwright, n_results, n_attempts, processed_data=None):
 
                         music_id = youtube_id( music_url )
                         if video_id == music_id:
-                            breakpoint()
+                            with open( "problem-video-report.txt", "a" ) as f:
+                                f.writelines( [ page.content() ] )
+                            page.screenshot(path="screenshot.png")
+                            break
                         video_music_links.append( music_id )
 
                     except Exception as e:
@@ -128,9 +157,10 @@ def collect_music_links(playwright, n_results, n_attempts, processed_data=None):
 
                 if video_music_links:
                     processed_data[video_id] = video_music_links
+                    new_video_urls += 1
                     print(f"Added {len(video_music_links)} music links for {video_id}")
 
-                if len(processed_data) >= n_results:
+                if new_video_urls >= n_results:
                     print(f"Target number of results ({n_results}) reached!")
                     context.close()
                     browser.close()
@@ -139,8 +169,11 @@ def collect_music_links(playwright, n_results, n_attempts, processed_data=None):
             except Exception as e:
                 print(f"Error processing video: {e}")
 
+            if video_id == "RQurJCHgD1w":
+                with open( "problem_video_found", "a" ) as f:
+                    f.writelines( video_music_links )
+
             # Go back to the search results page
-            videos_processed += 1
             page.goto(f"https://www.youtube.com/results?search_query={search_query}")
             time.sleep(5)
 
@@ -173,14 +206,7 @@ if __name__ == "__main__":
         print("\nCollected Music Data:")
         pprint.pp(processed_data)
 
-    data_item_num = 0
-    fname = f"data/music_links_{data_item_num}.json"
-    while os.path.isfile(fname):
-        data_item_num += 1
-        fname = f"data/music_links_{data_item_num}.json"
-
     if processed_data:
-        with open(fname, "w") as f:
-            json.dump(processed_data, f)
+        save_data_file( "data/music_links", processed_data )
     else:
         print("Result is empty. Not writing.")

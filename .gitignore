@@ -1,3 +1,4 @@
 .scr-env
 garbage/
 **/.DS_Store
+**/__pycache__
