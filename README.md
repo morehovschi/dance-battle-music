@@ -14,9 +14,9 @@ With the command above you will get a mini version of the dataset (N=15) where
 audio is downloaded based on existing YouTube links.
 
 b) If you'd like to run the script that queries YouTube for IDs of hip hop dance
-battle videos and songs referenced within:
-`./fetch_links.py --n_results <n_results> --n_attempts <n_attempts>`
-`python3 fetch_audio.py <most recently produced file in data/> <output_path>`
+battle videos and songs referenced within:<br>
+`./fetch_links.py --n_results <n_results> --n_attempts <n_attempts>`<br>
+`python3 fetch_audio.py <most recently produced file in data/> <output_path>`<br>
 
 #### Dataset structure
 Here is what the mini version of the dataset looks like after downloading with (a):
