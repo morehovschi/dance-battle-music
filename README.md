@@ -19,6 +19,7 @@ b) `./fetch_links.py --n_results <n_results> --n_attempts <n_attempts>`
 
 #### Dataset structure
 Here is what the mini version of the dataset looks like after downloading with (a):
+```
 data-out/
 ├── 000[YzHOD9t1fKM]
 │   ├── full.mp3
@@ -41,6 +42,7 @@ data-out/
 │   ├── reference[GSoQDaXh144].mp3
 │   └── reference[lkprxUbLPnM].mp3
 └── titles.json
+```
 
 Each top level directory corresponds to a dance battle video with the corresponding
 YuTube ID in square brackets. In each video's directory, there is an audio of the
