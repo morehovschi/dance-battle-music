@@ -11,9 +11,10 @@ Run the commands in `setup.sh` to install playwright and yt-dlp.
 a) `python3 fetch_audio.py music_links_dedup_0.json`
 
 With the command above you will get a mini version of the dataset (N=15) where
-audio is downloaded based on existing YouTube links. If you'd like to run the script
-that queries YouTube for IDs of hip hop dance battle videos and songs referenced
-within:
+audio is downloaded based on existing YouTube links.
+
+If you'd like to run the script that queries YouTube for IDs of hip hop dance
+battle videos and songs referenced within:
 b) `./fetch_links.py --n_results <n_results> --n_attempts <n_attempts>`
    `python3 fetch_audio.py <most recently produced file in data/> <output_path>`
 
