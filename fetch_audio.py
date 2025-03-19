@@ -99,7 +99,7 @@ if __name__ == "__main__":
             song_md = fetch_metadata_and_download(
                         "https://youtube.com/watch?v=" + song_id,
                         f"{video_dir_path}/reference[{song_id}]" )
-            titles[ video_title ].append( f"{song_md['title']} [ID:{song_id}]" )
+            titles[ video_title ].append( f"{song_md['title']} [ID: {song_id}]" )
 
     with open( f"{data_out_path}/titles.json", "w" ) as f:
         json.dump( titles, f )
