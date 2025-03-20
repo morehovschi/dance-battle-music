@@ -3,3 +3,4 @@ garbage/
 **/.DS_Store
 **/__pycache__
 data-out
+print_titles.py
