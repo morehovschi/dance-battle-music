@@ -4,3 +4,4 @@ garbage/
 **/__pycache__
 data-out
 print_titles.py
+.ipynb_checkpoints/
