@@ -45,8 +45,8 @@ data-out/
 └── titles.json
 ```
 
-Each top level directory corresponds to a dance battle video with the corresponding
-YuTube ID in square brackets. In each video's directory, there is an audio of the
+Each top level directory corresponds to a dance battle video with the
+YouTube ID in square brackets. In each video's directory, there is an audio of the
 full video and audios of all the songs referenced with links in the Music section
 of the video. `titles.json` contains all the titles of the YouTube videos used
 (dance videos and their corresponding songs).
