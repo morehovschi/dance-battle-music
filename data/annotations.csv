@@ -1,4 +1,4 @@
-Number,query's YouTubeID,start time in query,end time in query,reference's YouTube ID,start time in reference,end time in reference
+Number,query YouTubeID,start time in query,end time in query,reference's YouTube ID,start time in reference,end time in reference
 000,YzHOD9t1fKM,0,19,hTDb0ebFh8E,29,48
 000,YzHOD9t1fKM,19,104,hTDb0ebFh8E,0,88
 000,YzHOD9t1fKM,104,188,hTDb0ebFh8E,0,88
@@ -31,8 +31,8 @@ Number,query's YouTubeID,start time in query,end time in query,reference's YouTu
 005,CUKrxK3WH-A,95,160,2djj_KnGwjk,20,85
 005,CUKrxK3WH-A,335,478,7YQESUr8Cxc,0,144
 006,e5LH6WIIlSs,30,119,Ik21AAjmHVY,0,91
-006,e5LH6WIIlSs,412,527,Pbaorc9IR6k],18,132
-006,e5LH6WIIlSs,527,575,Pbaorc9IR6k],18,66
+006,e5LH6WIIlSs,412,527,Pbaorc9IR6k,18,132
+006,e5LH6WIIlSs,527,575,Pbaorc9IR6k,18,66
 007,eQ7YB3rgAmA,0,68,H58vbez_m4E,42,110
 007,eQ7YB3rgAmA,68,140,H58vbez_m4E,40,112
 008,juCoUIB92h8,0,61,LUKgeFGF7pE,29,90
@@ -70,5 +70,6 @@ Number,query's YouTubeID,start time in query,end time in query,reference's YouTu
 013,eDf1gmxSWVY,374,451,bySJmNM2fAk,8,85
 014,eWh9NgFyaz0,765,917,6O8ij0TELJk,0,152
 014,eWh9NgFyaz0,1379,1532,lkprxUbLPnM,0,153
-014,eWh9NgFyaz0,1535,1675,GK396YTm9Ek,2,143
+014,eWh9NgFyaz0,1535,1605,GK396YTm9Ek,2,82
+014,eWh9NgFyaz0,1606,1675,GK396YTm9Ek,5,83
 014,eWh9NgFyaz0,1998,2143,GSoQDaXh144,0,145
