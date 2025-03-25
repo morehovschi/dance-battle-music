@@ -72,7 +72,7 @@ This project is based on the peak detection method implemented in **Dejavu** for
 #### Changes and Additions
 
 - **MySQL Database Support**: Minor modifications to ensure compatibility with MySQL databases.
-- **Data**: The folder `data-out` contains 15 YouTube dance battle videos that have been annotated.
+- **Data**: You need to download the dataset and place it in the data-out folder.
 - **Annotations**: The file `Fingerprinting data annotation - Master.csv` contains annotations for the videos.
 
 #### Programs Included
