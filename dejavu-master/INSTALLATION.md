@@ -1,63 +1,96 @@
-# Installation of Dejavu
+# Dejavu Setup Guide
 
-So far Dejavu has only been tested on Unix systems.
+This guide provides step-by-step instructions to set up Dejavu for audio fingerprinting, including database configuration and necessary modifications to the `fingerprints` and `songs` tables.
 
-* [`pyaudio`](http://people.csail.mit.edu/hubert/pyaudio/) for grabbing audio from microphone
-* [`ffmpeg`](https://github.com/FFmpeg/FFmpeg) for converting audio files to .wav format
-* [`pydub`](http://pydub.com/), a Python `ffmpeg` wrapper
-* [`numpy`](http://www.numpy.org/) for taking the FFT of audio signals
-* [`scipy`](http://www.scipy.org/), used in peak finding algorithms
-* [`matplotlib`](http://matplotlib.org/), used for spectrograms and plotting
-* [`MySQLdb`](http://mysql-python.sourceforge.net/MySQLdb.html) for interfacing with MySQL databases
+## 1. Install Dependencies
+Ensure you have the required dependencies installed before proceeding:
 
-For installing `ffmpeg` on Mac OS X, I highly recommend [this post](http://jungels.net/articles/ffmpeg-howto.html).
+- Python 3.x
+- MySQL Server
+- Required Python packages (install using `pip install -r requirements.txt`)
 
-## Fedora 20+
+## 2. Database Configuration
 
-### Dependency installation on Fedora 20+
+### 2.1 Create and Configure the Database
 
-Install the dependencies:
+1. Log into MySQL:
+   ```sh
+   mysql -u root -p
+   ```
 
-    sudo yum install numpy scipy python-matplotlib ffmpeg portaudio-devel
-    pip install PyAudio
-    pip install pydub
-    
-Now setup virtualenv ([howto?](http://www.pythoncentral.io/how-to-install-virtualenv-python/)):
+2. Create the database:
+   ```sql
+   CREATE DATABASE dejavu;
+   ```
 
-    pip install virtualenv
-    virtualenv --system-site-packages env_with_system
+3. Use the newly created database:
+   ```sql
+   USE dejavu;
+   ```
 
-Install from PyPI:
+4. Create the `songs` table:
+   ```sql
+   CREATE TABLE songs (
+       song_id MEDIUMINT UNSIGNED NOT NULL AUTO_INCREMENT,
+       song_name VARCHAR(250) NOT NULL,
+       fingerprinted TINYINT DEFAULT 0,
+       file_sha1 BINARY(20) NOT NULL,
+       total_hashes INT NOT NULL DEFAULT 0,
+       date_created DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+       date_modified DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+       PRIMARY KEY (song_id)
+   );
+   ```
 
-    source env_with_system/bin/activate
-    pip install PyDejavu
+5. Create the `fingerprints` table:
+   ```sql
+   CREATE TABLE fingerprints (
+       hash BINARY(10) NOT NULL,
+       song_id MEDIUMINT UNSIGNED NOT NULL,
+       offset INT UNSIGNED NOT NULL,
+       date_created DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+       date_modified DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+       PRIMARY KEY (hash, song_id, offset)
+   );
+   ```
 
+## 3. Configure Dejavu
 
-You can also install the latest code from GitHub:
+Modify the `dejavu.cnf` file (or your equivalent configuration file) to include the correct database credentials:
 
-    source env_with_system/bin/activate
-    pip install https://github.com/worldveil/dejavu/zipball/master
-
-## Max OS X
-
-### Dependency installation for Mac OS X
-
-Tested on OS X Mavericks. An option is to install [Homebrew](http://brew.sh) and do the following:
-
+```json
+{
+    "database": {
+        "host": "localhost",
+        "user": "root",
+        "password": "yourpassword",
+        "database": "dejavu"
+    },
+    "database_type": "mysql"
+}
 ```
-brew install portaudio
-brew install ffmpeg
 
-sudo easy_install pyaudio
-sudo easy_install pydub
-sudo easy_install numpy
-sudo easy_install scipy
-sudo easy_install matplotlib
-sudo easy_install pip
+## 4. Run Dejavu
 
-sudo pip install MySQL-python
+Once the database is set up and configured, you can start fingerprinting audio files:
 
-sudo ln -s /usr/local/mysql/lib/libmysqlclient.18.dylib /usr/lib/libmysqlclient.18.dylib
+```sh
+python dejavu.py --fingerprint /path/to/audio/files
 ```
 
-However installing `portaudio` and/or `ffmpeg` from source is also doable. 
+To recognize a song:
+
+```sh
+python dejavu.py --recognize file /path/to/query/audio.mp3
+```
+
+## Troubleshooting
+- Ensure MySQL is running and accessible.
+- Double-check database credentials in `dejavu.cnf`.
+- Verify that tables are correctly created using `DESCRIBE songs;` and `DESCRIBE fingerprints;`.
+- If errors occur, consult the logs for details.
+
+---
+
+Now, Dejavu is ready to use with your modified database schema!
+
