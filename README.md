@@ -52,16 +52,28 @@ of the video. `titles.json` contains all the titles of the YouTube videos used
 (dance videos and their corresponding songs).
 
 ---
+### Neural Audio Fingerprinting
+
+This method implements and evaluates audio fingerprinting techniques for identifying musical samples in dance battle videos from YouTube using the neural-audio-fp model.
+
+**Neural Audio Fingerprinting: **
+- Uses neural networks to extract robust audio fingerprints
+- Processes audio in 1-second segments with 0.5-second overlap
+- Evaluation: KNN-based segment matching with voting
 
 **Setup Neural FP**
 1. Run the ```setup_fingerprinting.sh``` to git clone the neural fp repo
 2. Install neural-audio-fp requirements (If not already installed through the setup)
 
-**Extract fingerprinting script**
+#### Programs included 
+
+**1.Extract fingerprinting script**
 - Run extract_chunks.py in order to extract fingerprints of the dataset in segments of 1 second with 0.5 second overlap. Run it with the following command 
 ```bash
 python extract_chunks.py --meta path/to/annotations.csv --audio data-out --output fingerprints_chunks --config neural-audio-fp/config/default.yaml
 ```
+**2.eval_classify.ipynb**
+- Notebook for evaluation of fingerprints extracted using neural-audio-fp.
 
 ---
 
